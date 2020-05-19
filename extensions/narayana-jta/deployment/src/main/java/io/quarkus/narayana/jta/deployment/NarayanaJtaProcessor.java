@@ -2,13 +2,19 @@ package io.quarkus.narayana.jta.deployment;
 
 import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import javax.transaction.TransactionScoped;
 
+import com.arjuna.ats.arjuna.common.CoordinatorEnvironmentBean;
+import com.arjuna.ats.arjuna.common.CoreEnvironmentBean;
 import com.arjuna.ats.arjuna.common.ObjectStoreEnvironmentBean;
+import com.arjuna.ats.arjuna.common.RecoveryEnvironmentBean;
 import com.arjuna.ats.internal.arjuna.coordinator.CheckedActionFactoryImple;
 import com.arjuna.ats.internal.arjuna.objectstore.ShadowNoFileLockStore;
+import com.arjuna.ats.internal.jta.resources.arjunacore.CommitMarkableResourceRecord;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionManagerImple;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionSynchronizationRegistryImple;
 import com.arjuna.ats.internal.jta.transaction.arjunacore.UserTransactionImple;
@@ -58,12 +64,12 @@ class NarayanaJtaProcessor {
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             BuildProducer<RuntimeInitializedClassBuildItem> runtimeInit,
             BuildProducer<FeatureBuildItem> feature,
+            TransactionManagerBuildTimeConfiguration transactionBuildTimeConfig,
             TransactionManagerConfiguration transactions) {
         feature.produce(new FeatureBuildItem(FeatureBuildItem.NARAYANA_JTA));
         additionalBeans.produce(new AdditionalBeanBuildItem(NarayanaJtaProducers.class));
         additionalBeans.produce(new AdditionalBeanBuildItem(CDIDelegatingTransactionManager.class));
-        runtimeInit.produce(new RuntimeInitializedClassBuildItem(
-                "com.arjuna.ats.internal.jta.resources.arjunacore.CommitMarkableResourceRecord"));
+        runtimeInit.produce(new RuntimeInitializedClassBuildItem(CommitMarkableResourceRecord.class.getName()));
         reflectiveClass.produce(new ReflectiveClassBuildItem(false, false, JTAEnvironmentBean.class.getName(),
                 UserTransactionImple.class.getName(),
                 CheckedActionFactoryImple.class.getName(),
@@ -85,14 +91,42 @@ class NarayanaJtaProcessor {
         Properties defaultProperties = PropertiesFactory.getDefaultProperties();
         //we don't want to store the system properties here
         //we re-apply them at runtime
-        for (Object i : System.getProperties().keySet()) {
-            defaultProperties.remove(i);
-        }
+        //for (Object i : System.getProperties().keySet()) {
+        //    defaultProperties.remove(i);
+        //}
         recorder.setDefaultProperties(defaultProperties);
         // This must be done before setNodeName as the code in setNodeName will create a TSM based on the value of this property
         recorder.disableTransactionStatusManager();
         recorder.setNodeName(transactions);
         recorder.setDefaultTimeout(transactions);
+
+        RecoveryEnvironmentBean recoveryEnvironmentBean = new RecoveryEnvironmentBean();
+        JTAEnvironmentBean jtaEnvironmentBean = new JTAEnvironmentBean();
+        CoreEnvironmentBean coreEnvironmentBean = new CoreEnvironmentBean();
+        CoordinatorEnvironmentBean coordinatorEnvironmentBean = new CoordinatorEnvironmentBean();
+        ObjectStoreEnvironmentBean objectStoreEnvironmentBean = new ObjectStoreEnvironmentBean();
+
+        configJtaEnvironmentBean(jtaEnvironmentBean, transactionBuildTimeConfig);
+        configRecoveryEnvironmentBean(recoveryEnvironmentBean, transactionBuildTimeConfig);
+
+        Map<String, Object> configBeans = new HashMap<>();
+        configBeans.put(CoordinatorEnvironmentBean.class.getName(), coordinatorEnvironmentBean);
+        configBeans.put(RecoveryEnvironmentBean.class.getName(), recoveryEnvironmentBean);
+        configBeans.put(CoreEnvironmentBean.class.getName(), coreEnvironmentBean);
+        configBeans.put(JTAEnvironmentBean.class.getName(), jtaEnvironmentBean);
+        configBeans.put(ObjectStoreEnvironmentBean.class.getName(), objectStoreEnvironmentBean);
+        recorder.setConfigBeans(configBeans);
+    }
+
+    private void configJtaEnvironmentBean(JTAEnvironmentBean bean, TransactionManagerBuildTimeConfiguration config) {
+        bean.setXaResourceOrphanFilterClassNames(config.xaResourceOrphanFilterClassNames);
+    }
+
+    private void configRecoveryEnvironmentBean(RecoveryEnvironmentBean bean, TransactionManagerBuildTimeConfiguration config) {
+        bean.setRecoveryModuleClassNames(config.recoveryModuleClassNames);
+        bean.setExpiryScannerClassNames(config.expiryScannerClassNames);
+        bean.setRecoveryPort(config.recoveryPort);
+        bean.setRecoveryListener(config.recoveryListener);
     }
 
     @BuildStep

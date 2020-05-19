@@ -1,6 +1,5 @@
 package io.quarkus.narayana.jta.runtime;
 
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
@@ -11,7 +10,7 @@ import com.arjuna.ats.arjuna.common.CoreEnvironmentBeanException;
 import com.arjuna.ats.arjuna.common.arjPropertyManager;
 import com.arjuna.ats.arjuna.coordinator.TxControl;
 import com.arjuna.ats.jta.common.jtaPropertyManager;
-import com.arjuna.common.util.propertyservice.PropertiesFactory;
+import com.arjuna.common.internal.util.propertyservice.BeanPopulator;
 
 import io.quarkus.runtime.annotations.Recorder;
 
@@ -40,14 +39,14 @@ public class NarayanaJtaRecorder {
             properties.put(i.getKey(), i.getValue());
         }
 
-        try {
-            Field field = PropertiesFactory.class.getDeclaredField("delegatePropertiesFactory");
-            field.setAccessible(true);
-            field.set(null, new QuarkusPropertiesFactory(properties));
-
-        } catch (Exception e) {
-            log.error("Could not override transaction properties factory", e);
-        }
+        //        try {
+        //            Field field = PropertiesFactory.class.getDeclaredField("delegatePropertiesFactory");
+        //            field.setAccessible(true);
+        //            field.set(null, new QuarkusPropertiesFactory(properties));
+        //
+        //        } catch (Exception e) {
+        //            log.error("Could not override transaction properties factory", e);
+        //        }
 
         defaultProperties = properties;
     }
@@ -57,6 +56,10 @@ public class NarayanaJtaRecorder {
             arjPropertyManager.getCoordinatorEnvironmentBean().setDefaultTimeout((int) defaultTimeout.getSeconds());
             TxControl.setDefaultTimeout((int) defaultTimeout.getSeconds());
         });
+    }
+
+    public void setConfigBeans(Map<String, Object> beans) {
+        beans.forEach((k, v) -> BeanPopulator.setBeanInstanceIfAbsent(k, v));
     }
 
     public static Properties getDefaultProperties() {
