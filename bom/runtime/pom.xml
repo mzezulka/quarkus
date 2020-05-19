@@ -34,15 +34,16 @@
         <microprofile-rest-client.version>1.4.1</microprofile-rest-client.version>
         <smallrye-config.version>1.7.0</smallrye-config.version>
         <smallrye-health.version>2.2.1</smallrye-health.version>
-        <smallrye-metrics.version>2.4.1</smallrye-metrics.version>
+        <smallrye-metrics.version>2.4.2</smallrye-metrics.version>
         <smallrye-open-api.version>1.2.3</smallrye-open-api.version>
+        <smallrye-graphql.version>1.0.3</smallrye-graphql.version>
         <smallrye-opentracing.version>1.3.4</smallrye-opentracing.version>
         <smallrye-fault-tolerance.version>4.2.0</smallrye-fault-tolerance.version>
-        <smallrye-jwt.version>2.1.1</smallrye-jwt.version>
-        <smallrye-context-propagation.version>1.0.11</smallrye-context-propagation.version>
+        <smallrye-jwt.version>2.1.2</smallrye-jwt.version>
+        <smallrye-context-propagation.version>1.0.13</smallrye-context-propagation.version>
         <smallrye-reactive-streams-operators.version>1.0.12</smallrye-reactive-streams-operators.version>
-        <smallrye-converter-api.version>1.0.10</smallrye-converter-api.version>
-        <smallrye-reactive-messaging.version>2.0.2</smallrye-reactive-messaging.version>
+        <smallrye-converter-api.version>1.0.12</smallrye-converter-api.version>
+        <smallrye-reactive-messaging.version>2.0.3</smallrye-reactive-messaging.version>
         <swagger-ui.version>3.25.0</swagger-ui.version>
         <jakarta.activation.version>1.2.1</jakarta.activation.version>
         <jakarta.annotation-api.version>1.3.5</jakarta.annotation-api.version>
@@ -82,14 +83,14 @@
         <commons-lang3.version>3.9</commons-lang3.version>
         <commons-codec.version>1.13</commons-codec.version>
         <classmate.version>1.3.4</classmate.version>
-        <hibernate-orm.version>5.4.15.Final</hibernate-orm.version>
-        <hibernate-validator.version>6.1.4.Final</hibernate-validator.version>
-        <hibernate-search.version>6.0.0.Beta6</hibernate-search.version>
+        <hibernate-orm.version>5.4.16.Final</hibernate-orm.version>
+        <hibernate-validator.version>6.1.5.Final</hibernate-validator.version>
+        <hibernate-search.version>6.0.0.Beta7</hibernate-search.version>
         <narayana.version>5.10.4.Final</narayana.version>
         <jboss-transaction-api_1.2_spec.version>1.1.1.Final</jboss-transaction-api_1.2_spec.version>
         <agroal.version>1.8</agroal.version>
         <jboss-transaction-spi.version>7.6.0.Final</jboss-transaction-spi.version>
-        <elasticsearch-rest-client.version>7.6.1</elasticsearch-rest-client.version>
+        <elasticsearch-rest-client.version>7.6.2</elasticsearch-rest-client.version>
         <rxjava1.version>1.3.8</rxjava1.version>
         <rxjava.version>2.2.19</rxjava.version>
         <wildfly.openssl.version>1.0.6.Final</wildfly.openssl.version>
@@ -117,7 +118,7 @@
         <rest-assured.version>4.3.0</rest-assured.version>
         <junit.jupiter.version>5.6.2</junit.jupiter.version>
         <testng.version>6.14.2</testng.version>
-        <assertj.version>3.16.0</assertj.version>
+        <assertj.version>3.16.1</assertj.version>
         <json-smart.version>2.3</json-smart.version>
         <infinispan.version>10.1.5.Final</infinispan.version>
         <infinispan.protostream.version>4.3.2.Final</infinispan.protostream.version>
@@ -143,7 +144,7 @@
         <aws-alexa-sdk.version>2.30.0</aws-alexa-sdk.version>
         <azure-functions-java-library.version>1.3.0</azure-functions-java-library.version>
         <kotlin.version>1.3.72</kotlin.version>
-        <dekorate.version>0.11.5</dekorate.version>
+        <dekorate.version>0.11.9</dekorate.version>
         <maven-artifact-transfer.version>0.10.0</maven-artifact-transfer.version>
         <jline.version>2.14.6</jline.version>
         <maven-invoker.version>3.0.1</maven-invoker.version>
@@ -151,14 +152,14 @@
         <jprocesses.version>1.6.5</jprocesses.version>
         <jboss-logmanager.version>1.0.4</jboss-logmanager.version>
         <jgit.version>5.7.0.202003110725-r</jgit.version>
-        <flyway.version>6.4.1</flyway.version>
+        <flyway.version>6.4.2</flyway.version>
         <yasson.version>1.0.7</yasson.version>
-        <liquibase.version>3.8.9</liquibase.version>
+        <liquibase.version>3.9.0</liquibase.version>
         <snakeyaml.version>1.26</snakeyaml.version>
         <osgi.version>6.0.0</osgi.version>
         <neo4j-java-driver.version>4.0.1</neo4j-java-driver.version>
-        <mongo-client.version>4.0.0</mongo-client.version>
-        <mongo-crypt.version>1.0.0</mongo-crypt.version>
+        <mongo-client.version>4.0.3</mongo-client.version>
+        <mongo-crypt.version>1.0.1</mongo-crypt.version>
         <artemis.version>2.11.0</artemis.version>
         <proton-j.version>0.33.4</proton-j.version>
         <okhttp.version>3.14.6</okhttp.version>
@@ -180,9 +181,10 @@
         <mvel2.version>2.4.7.Final</mvel2.version>
         <htmlunit.version>2.36.0</htmlunit.version>
         <mockito.version>3.3.3</mockito.version>
+        <jna.version>5.3.1</jna.version><!-- should satisfy both testcontainers and mongodb -->
         <antlr.version>4.7.2</antlr.version>
         <quarkus-security.version>1.1.1.Final</quarkus-security.version>
-        <keycloak.version>9.0.2</keycloak.version>
+        <keycloak.version>10.0.0</keycloak.version>
         <logstash-gelf.version>1.14.0</logstash-gelf.version>
         <jsch.version>0.1.55</jsch.version>
         <jzlib.version>1.1.1</jzlib.version>
@@ -191,6 +193,11 @@
         <jib-core.version>0.13.1</jib-core.version>
         <google-http-client.version>1.34.0</google-http-client.version>
         <scram-client.version>2.1</scram-client.version>
+        <!-- Make sure to check compatibility between these 2 gRPC components before upgrade -->
+        <grpc.version>1.29.0</grpc.version>
+        <grpc-jprotoc.version>1.0.1</grpc-jprotoc.version>
+
+        <picocli.version>4.3.2</picocli.version>
     </properties>
 
     <dependencyManagement>
@@ -257,6 +264,15 @@
                 <groupId>org.optaplanner</groupId>
                 <artifactId>optaplanner-bom</artifactId>
                 <version>${optaplanner.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+
+            <!-- gRPC dependencies, imported as a BOM -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -443,6 +459,16 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-hibernate-orm-panache-kotlin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-hibernate-orm-panache-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-panache-rest-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -543,6 +569,11 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-mutiny-reactive-streams-operators</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-smallrye-reactive-type-converters</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -581,6 +612,11 @@
                         <artifactId>shrinkwrap-api</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-smallrye-graphql</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
@@ -699,6 +735,11 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-grpc</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-undertow-websockets</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -740,6 +781,11 @@
             <dependency>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-spring-cloud-config-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-spring-cache</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -809,6 +855,16 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-amazon-sns</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-amazon-sqs</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-amazon-alexa</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -860,6 +916,11 @@
             <dependency>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-kubernetes-config</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-consul-config</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -929,7 +990,7 @@
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
-                <artifactId>quarkus-vault-spi</artifactId>
+                <artifactId>quarkus-credentials</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -1007,6 +1068,16 @@
             <dependency>
                 <groupId>io.quarkus</groupId>
                 <artifactId>quarkus-resteasy-qute</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-picocli</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-webjars-locator</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -1150,6 +1221,11 @@
             <dependency>
                 <groupId>io.smallrye.reactive</groupId>
                 <artifactId>mutiny</artifactId>
+                <version>${mutiny.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.smallrye.reactive</groupId>
+                <artifactId>mutiny-reactive-streams-operators</artifactId>
                 <version>${mutiny.version}</version>
             </dependency>
             <dependency>
@@ -1475,6 +1551,27 @@
             </dependency>
             <dependency>
                 <groupId>io.smallrye</groupId>
+                <artifactId>smallrye-graphql-cdi</artifactId>
+                <version>${smallrye-graphql.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.osgi</groupId>
+                        <artifactId>org.osgi.annotation.versioning</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.smallrye</groupId>
+                <artifactId>smallrye-graphql-schema-builder</artifactId>
+                <version>${smallrye-graphql.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.smallrye</groupId>
+                <artifactId>smallrye-graphql-ui-graphiql</artifactId>
+                <version>${smallrye-graphql.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.smallrye</groupId>
                 <artifactId>smallrye-opentracing</artifactId>
                 <version>${smallrye-opentracing.version}</version>
                 <exclusions>
@@ -1796,6 +1893,11 @@
             </dependency>
             <dependency>
                 <groupId>org.mongodb</groupId>
+                <artifactId>bson</artifactId>
+                <version>${mongo-client.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
                 <artifactId>mongodb-crypt</artifactId>
                 <version>${mongo-crypt.version}</version>
             </dependency>
@@ -1803,6 +1905,14 @@
                 <groupId>net.minidev</groupId>
                 <artifactId>json-smart</artifactId>
                 <version>${json-smart.version}</version>
+            </dependency>
+            <dependency>
+                <!-- Solves version conflicts -->
+                <!-- (1) between de.flapdoodle.embed.mongo and mongodb-crypt and -->
+                <!-- (2) between mongodb-crypt and testcontainers (managed in the Test BOM) -->
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>${jna.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.codehaus.plexus</groupId>
@@ -2453,16 +2563,6 @@
                 <version>${mutiny-client.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.vertx</groupId>
-                <artifactId>vertx-web</artifactId>
-                <version>${vertx.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.vertx</groupId>
-                <artifactId>vertx-web-common</artifactId>
-                <version>${vertx.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>io.smallrye.reactive</groupId>
                 <artifactId>smallrye-axle-sql-client</artifactId>
                 <version>${axle-client.version}</version>
@@ -2759,6 +2859,11 @@
             </dependency>
             <dependency>
                 <groupId>io.smallrye.reactive</groupId>
+                <artifactId>smallrye-reactive-converter-mutiny</artifactId>
+                <version>${smallrye-converter-api.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.smallrye.reactive</groupId>
                 <artifactId>smallrye-reactive-converter-rxjava2</artifactId>
                 <version>${smallrye-converter-api.version}</version>
             </dependency>
@@ -2872,6 +2977,16 @@
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>s3</artifactId>
+                <version>${awssdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>sns</artifactId>
+                <version>${awssdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>sqs</artifactId>
                 <version>${awssdk.version}</version>
             </dependency>
             <dependency>
@@ -3199,6 +3314,25 @@
                 <groupId>org.mvel</groupId>
                 <artifactId>mvel2</artifactId>
                 <version>${mvel2.version}</version>
+            </dependency>
+
+            <!-- gRPC additional dependencies (the rest is managed by the BOM) -->
+            <dependency>
+                <groupId>com.salesforce.servicelibs</groupId>
+                <artifactId>jprotoc</artifactId>
+                <version>${grpc-jprotoc.version}</version>
+            </dependency>
+
+            <!-- Picocli -->
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli</artifactId>
+                <version>${picocli.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli-codegen</artifactId>
+                <version>${picocli.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

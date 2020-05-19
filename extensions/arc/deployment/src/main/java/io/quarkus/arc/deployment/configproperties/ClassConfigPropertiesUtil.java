@@ -14,10 +14,13 @@ import java.util.Set;
 
 import javax.enterprise.context.Dependent;
 import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Default;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 
 import org.eclipse.microprofile.config.Config;
+import org.jboss.jandex.AnnotationInstance;
+import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.FieldInfo;
@@ -120,7 +123,8 @@ final class ClassConfigPropertiesUtil {
      */
     static boolean addProducerMethodForClassConfigProperties(ClassLoader classLoader, ClassInfo configPropertiesClassInfo,
             ClassCreator producerClassCreator, String prefixStr, ConfigProperties.NamingStrategy namingStrategy,
-            IndexView applicationIndex,
+            boolean failOnMismatchingMember,
+            boolean needsQualifier, IndexView applicationIndex,
             BuildProducer<ConfigPropertyBuildItem> configProperties) {
 
         if (!configPropertiesClassInfo.hasNoArgsConstructor()) {
@@ -142,6 +146,8 @@ final class ClassConfigPropertiesUtil {
          * Add a method like this:
          *
          * @Produces
+         * 
+         * @Default // (or @ConfigPrefix qualifier)
          * public SomeClass produceSomeClass(Config config) {
          *
          * }
@@ -149,18 +155,30 @@ final class ClassConfigPropertiesUtil {
          * or
          *
          * @Produces
+         * 
+         * @Default // (or @ConfigPrefix qualifier)
          * public SomeClass produceSomeClass(Config config, Validator validator) {
          *
          * }
          */
 
+        String methodName = "produce" + configPropertiesClassInfo.name().withoutPackagePrefix();
+        if (needsQualifier) {
+            // we need to differentiate the different producers of the same class
+            methodName = methodName + "WithPrefix" + HashUtil.sha1(prefixStr);
+        }
         try (MethodCreator methodCreator = producerClassCreator.getMethodCreator(
-                "produce" + configPropertiesClassInfo.name().withoutPackagePrefix(),
-                configObjectClassStr, produceMethodParameterTypes)) {
+                methodName, configObjectClassStr, produceMethodParameterTypes)) {
             methodCreator.addAnnotation(Produces.class);
+            if (needsQualifier) {
+                methodCreator.addAnnotation(AnnotationInstance.create(DotNames.CONFIG_PREFIX, null,
+                        new AnnotationValue[] { AnnotationValue.createStringValue("value", prefixStr) }));
+            } else {
+                methodCreator.addAnnotation(Default.class);
+            }
 
             ResultHandle configObject = populateConfigObject(classLoader, configPropertiesClassInfo, prefixStr, namingStrategy,
-                    methodCreator, applicationIndex, configProperties);
+                    failOnMismatchingMember, methodCreator, applicationIndex, configProperties);
 
             if (needsValidation) {
                 createValidationCodePath(methodCreator, configObject, prefixStr);
@@ -190,7 +208,8 @@ final class ClassConfigPropertiesUtil {
     }
 
     private static ResultHandle populateConfigObject(ClassLoader classLoader, ClassInfo configClassInfo, String prefixStr,
-            ConfigProperties.NamingStrategy namingStrategy, MethodCreator methodCreator, IndexView applicationIndex,
+            ConfigProperties.NamingStrategy namingStrategy, boolean failOnMismatchingMember, MethodCreator methodCreator,
+            IndexView applicationIndex,
             BuildProducer<ConfigPropertyBuildItem> configProperties) {
         String configObjectClassStr = configClassInfo.name().toString();
         ResultHandle configObject = methodCreator.newInstance(MethodDescriptor.ofConstructor(configObjectClassStr));
@@ -210,6 +229,9 @@ final class ClassConfigPropertiesUtil {
             // For each field of the class try to pull it out of MP Config and call the corresponding setter
             List<FieldInfo> fields = currentClassInHierarchy.fields();
             for (FieldInfo field : fields) {
+                if (Modifier.isStatic(field.flags())) { // nothing we need to do about static fields
+                    continue;
+                }
                 if (field.hasAnnotation(DotNames.CONFIG_PROPERTY)) {
                     LOGGER.warn(
                             "'@ConfigProperty' is ignored when added to a field of a class annotated with '@ConfigProperties'. Offending field is '"
@@ -222,9 +244,15 @@ final class ClassConfigPropertiesUtil {
                 MethodInfo setter = currentClassInHierarchy.method(setterName, fieldType);
                 if (setter == null) {
                     if (!Modifier.isPublic(field.flags()) || Modifier.isFinal(field.flags())) {
-                        throw new IllegalArgumentException(
-                                "Configuration properties class '" + configClassInfo + "' does not have a setter for field "
-                                        + field + " nor is the field a public non-final field");
+                        String message = "Configuration properties class '" + configClassInfo
+                                + "' does not have a setter for field '"
+                                + field.name() + "' nor is the field a public non-final field.";
+                        if (failOnMismatchingMember) {
+                            throw new IllegalArgumentException(message);
+                        } else {
+                            LOGGER.warn(message + " It will therefore be ignored.");
+                            continue;
+                        }
                     }
                     useFieldAccess = true;
                 }
@@ -238,27 +266,38 @@ final class ClassConfigPropertiesUtil {
                  * What we do is simply recursively build it up based by adding the field name to the config name prefix
                  */
                 DotName fieldTypeDotName = fieldType.name();
-                String fieldTypeStr = fieldTypeDotName.toString();
                 ClassInfo fieldTypeClassInfo = applicationIndex.getClassByName(fieldType.name());
+                ResultHandle mpConfig = methodCreator.getMethodParam(0);
                 if (fieldTypeClassInfo != null) {
-                    if (!fieldTypeClassInfo.hasNoArgsConstructor()) {
-                        throw new IllegalArgumentException(
-                                "Nested configuration class '" + fieldTypeClassInfo + "' must contain a no-args constructor ");
+                    if (DotNames.ENUM.equals(fieldTypeClassInfo.superName())) {
+                        // just read the value from MP Config normally
+                        ResultHandle value = methodCreator.invokeInterfaceMethod(
+                                MethodDescriptor.ofMethod(Config.class, "getValue", Object.class, String.class, Class.class),
+                                mpConfig,
+                                methodCreator.load(getFullConfigName(prefixStr, namingStrategy, field)),
+                                methodCreator.loadClass(fieldTypeDotName.toString()));
+
+                        createWriteValue(methodCreator, configObject, field, setter, useFieldAccess, value);
+                    } else {
+                        if (!fieldTypeClassInfo.hasNoArgsConstructor()) {
+                            throw new IllegalArgumentException(
+                                    "Nested configuration class '" + fieldTypeClassInfo
+                                            + "' must contain a no-args constructor ");
+                        }
+
+                        if (!Modifier.isPublic(fieldTypeClassInfo.flags())) {
+                            throw new IllegalArgumentException(
+                                    "Nested configuration class '" + fieldTypeClassInfo + "' must be public ");
+                        }
+
+                        ResultHandle nestedConfigObject = populateConfigObject(classLoader, fieldTypeClassInfo,
+                                getFullConfigName(prefixStr, namingStrategy, field), namingStrategy, failOnMismatchingMember,
+                                methodCreator,
+                                applicationIndex, configProperties);
+                        createWriteValue(methodCreator, configObject, field, setter, useFieldAccess, nestedConfigObject);
                     }
-
-                    if (!Modifier.isPublic(fieldTypeClassInfo.flags())) {
-                        throw new IllegalArgumentException(
-                                "Nested configuration class '" + fieldTypeClassInfo + "' must be public ");
-                    }
-
-                    ResultHandle nestedConfigObject = populateConfigObject(classLoader, fieldTypeClassInfo,
-                            prefixStr + "." + namingStrategy.getName(field.name()), namingStrategy, methodCreator,
-                            applicationIndex, configProperties);
-                    createWriteValue(methodCreator, configObject, field, setter, useFieldAccess, nestedConfigObject);
-
                 } else {
-                    String fullConfigName = prefixStr + "." + namingStrategy.getName(field.name());
-                    ResultHandle config = methodCreator.getMethodParam(0);
+                    String fullConfigName = getFullConfigName(prefixStr, namingStrategy, field);
                     if (DotNames.OPTIONAL.equals(fieldTypeDotName)) {
                         Type genericType = determineSingleGenericType(field.type(),
                                 field.declaringClass().name());
@@ -268,14 +307,14 @@ final class ClassConfigPropertiesUtil {
                             ResultHandle setterValue = methodCreator.invokeInterfaceMethod(
                                     MethodDescriptor.ofMethod(Config.class, "getOptionalValue", Optional.class, String.class,
                                             Class.class),
-                                    config, methodCreator.load(fullConfigName),
+                                    mpConfig, methodCreator.load(fullConfigName),
                                     methodCreator.loadClass(genericType.name().toString()));
                             createWriteValue(methodCreator, configObject, field, setter, useFieldAccess, setterValue);
                         } else {
                             // convert the String value and populate an Optional with it
                             ReadOptionalResponse readOptionalResponse = createReadOptionalValueAndConvertIfNeeded(
                                     fullConfigName,
-                                    genericType, field.declaringClass().name(), methodCreator, config);
+                                    genericType, field.declaringClass().name(), methodCreator, mpConfig);
                             createWriteValue(readOptionalResponse.getIsPresentTrue(), configObject, field, setter,
                                     useFieldAccess,
                                     readOptionalResponse.getIsPresentTrue().invokeStaticMethod(
@@ -301,7 +340,7 @@ final class ClassConfigPropertiesUtil {
 
                             ReadOptionalResponse readOptionalResponse = createReadOptionalValueAndConvertIfNeeded(
                                     fullConfigName,
-                                    fieldType, field.declaringClass().name(), methodCreator, config);
+                                    fieldType, field.declaringClass().name(), methodCreator, mpConfig);
 
                             // call the setter if the optional contained data
                             createWriteValue(readOptionalResponse.getIsPresentTrue(), configObject, field, setter,
@@ -314,7 +353,7 @@ final class ClassConfigPropertiesUtil {
                              */
                             ResultHandle setterValue = createReadMandatoryValueAndConvertIfNeeded(
                                     fullConfigName, fieldType,
-                                    field.declaringClass().name(), methodCreator, config);
+                                    field.declaringClass().name(), methodCreator, mpConfig);
                             createWriteValue(methodCreator, configObject, field, setter, useFieldAccess, setterValue);
 
                         }
@@ -332,10 +371,18 @@ final class ClassConfigPropertiesUtil {
             if (superClassDotName.equals(DotNames.OBJECT)) {
                 break;
             }
-            currentClassInHierarchy = applicationIndex.getClassByName(superClassDotName);
-            if (currentClassInHierarchy == null) {
+
+            ClassInfo newCurrentClassInHierarchy = applicationIndex.getClassByName(superClassDotName);
+            if (newCurrentClassInHierarchy == null) {
+                if (!superClassDotName.toString().startsWith("java.")) {
+                    LOGGER.warn("Class '" + superClassDotName + "' which is a parent class of '"
+                            + currentClassInHierarchy.name()
+                            + "' is not part of the Jandex index so its fields will be ignored. If you intended to include these fields, consider making the dependency part of the Jandex index by following the advice at: https://quarkus.io/guides/cdi-reference#bean_discovery");
+                }
                 break;
             }
+
+            currentClassInHierarchy = newCurrentClassInHierarchy;
         }
 
         for (ConfigPropertyBuildItemCandidate candidate : configPropertyBuildItemCandidates) {
@@ -344,6 +391,10 @@ final class ClassConfigPropertiesUtil {
         }
 
         return configObject;
+    }
+
+    private static String getFullConfigName(String prefixStr, ConfigProperties.NamingStrategy namingStrategy, FieldInfo field) {
+        return prefixStr + "." + namingStrategy.getName(field.name());
     }
 
     private static void createWriteValue(BytecodeCreator bytecodeCreator, ResultHandle configObject, FieldInfo field,

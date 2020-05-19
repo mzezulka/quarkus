@@ -122,7 +122,7 @@ jobs:
 
     services:
       keycloak:
-        image: quay.io/keycloak/keycloak:9.0.2
+        image: quay.io/keycloak/keycloak:10.0.0
         env:
           KEYCLOAK_USER: admin
           KEYCLOAK_PASSWORD: admin
@@ -163,13 +163,15 @@ jobs:
         ports:
           - 127.0.0.1:7687:7687
       amazonServices:
-        image: localstack/localstack
+        image: localstack/localstack:0.11.1
         env:
-          SERVICES: s3,dynamodb
+          SERVICES: s3,dynamodb,sns,sqs
           START_WEB: 0
         ports:
           - 127.0.0.1:8000:4569
           - 127.0.0.1:8008:4572
+          - 127.0.0.1:8009:4575
+          - 127.0.0.1:8010:4576
 
     steps:
       - name: Start mysql
@@ -260,38 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
-    services:
-      postgres:
-        image: postgres:10.5
-        env:
-          POSTGRES_USER: hibernate_orm_test
-          POSTGRES_PASSWORD: hibernate_orm_test
-          POSTGRES_DB: hibernate_orm_test
-        ports:
-          - 5432:5432
-      neo4j:
-        image: neo4j/neo4j-experimental:4.0.0-rc01
-        env:
-          NEO4J_AUTH: neo4j/secret
-          NEO4J_dbms_memory_pagecache_size: 10M 
-          NEO4J_dbms_memory_heap_initial__size: 10M
-        ports:
-          - 7687:7687
-      amazonServices:
-        image: localstack/localstack
-        env:
-          SERVICES: s3,dynamodb
-          START_WEB: 0
-        ports:
-          - 127.0.0.1:8000:4569
-          - 127.0.0.1:8008:4572
-
     steps:
-      - name: Start mysql
-        shell: bash
-        run: |
-          sudo service mysql stop || true
-          docker run --rm --publish 3306:3306 --name build-mysql -e MYSQL_USER=$DB_USER -e MYSQL_PASSWORD=$DB_PASSWORD -e MYSQL_DATABASE=$DB_NAME -e MYSQL_RANDOM_ROOT_PASSWORD=true -e MYSQL_DATABASE=hibernate_orm_test -d mysql:5 --skip-ssl
       - uses: actions/checkout@v2
       - name: Reclaim Disk Space
         run: .github/ci-prerequisites.sh
@@ -333,7 +304,7 @@ jobs:
       max-parallel: 8
       fail-fast: false
       matrix:
-        category: [Main, Data1, Data2, Data3, Data4, Data5, Security1, Security2, Amazon, Messaging, Cache, HTTP, Misc1, Misc2, Misc3, Spring]
+        category: [Main, Data1, Data2, Data3, Data4, Data5, Security1, Security2, Security3, Amazon, Messaging, Cache, HTTP, Misc1, Misc2, Misc3, Misc4, Spring, gRPC]
         include:
           - category: Main
             postgres: "true"
@@ -360,10 +331,11 @@ jobs:
               reactive-mysql-client
           - category: Data3
             postgres: "true"
-            timeout: 50
+            timeout: 60
             test-modules: >
               flyway
               hibernate-orm-panache
+              hibernate-orm-panache-kotlin
               reactive-pg-client
               liquibase
               panache-rest-hibernate-orm
@@ -413,8 +385,14 @@ jobs:
               oidc-code-flow
               oidc-tenancy
               keycloak-authorization
+          - category: Security3
+            timeout: 40
+            test-modules: >
+              vault
+              vault-app
+              vault-agroal
           - category: Cache
-            timeout: 35
+            timeout: 45
             test-modules: >
               infinispan-cache-jpa
               infinispan-client
@@ -431,7 +409,7 @@ jobs:
               virtual-http
               rest-client
           - category: Misc1
-            timeout: 45
+            timeout: 50
             test-modules: >
               maven
               jackson
@@ -440,6 +418,7 @@ jobs:
               jgit
               quartz
               qute
+              consul-config
           - category: Misc2
             timeout: 45
             test-modules: >
@@ -455,6 +434,12 @@ jobs:
             timeout: 50
             test-modules: >
               kubernetes-client
+          - category: Misc4
+            timeout: 30
+            test-modules: >
+              smallrye-graphql
+              picocli-native
+              webjars-locator
           - category: Spring
             timeout: 40
             test-modules: >
@@ -463,12 +448,16 @@ jobs:
               spring-data-jpa
               spring-boot-properties
               spring-cloud-config-client
-          - category: Vault
-            timeout: 30
+          - category: gRPC
+            timeout: 50
             test-modules: >
-              vault
-              vault-app
-              vault-agroal
+              grpc-health
+              grpc-interceptors
+              grpc-mutual-auth
+              grpc-plain-text
+              grpc-proto-v2
+              grpc-streaming
+              grpc-tls
     steps:
       # These should be services, but services do not (yet) allow conditional execution
       - name: Postgres Service
@@ -498,8 +487,8 @@ jobs:
         if: matrix.mssql
       - name: Amazon Services
         run: |
-          docker run --rm --publish 8000:4569 --publish 8008:4572 --name build-amazon-service-clients -e SERVICES=s3,dynamodb -e START_WEB=0 \
-            -d localstack/localstack
+          docker run --rm --publish 8000:4569 --publish 8008:4572 --publish 8009:4575 --publish 8010:4576 --name build-amazon-service-clients -e SERVICES=s3,dynamodb,sns,sqs -e START_WEB=0 \
+            -d localstack/localstack:0.11.1
         if: matrix.amazonServices
       - name: Neo4j Service
         run: |
@@ -514,7 +503,7 @@ jobs:
               -server -Xms64m -Xmx512m -XX:MetaspaceSize=96M \
               -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true \
               -Dkeycloak.profile.feature.upload_scripts=enabled" \
-            -d quay.io/keycloak/keycloak:9.0.2
+            -d quay.io/keycloak/keycloak:10.0.0
         if: matrix.keycloak
       - uses: actions/checkout@v2
       - name: Set up JDK 11

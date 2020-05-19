@@ -18,5 +18,7 @@
         <module>common</module>
         <module>dynamodb</module>
         <module>s3</module>
+        <module>sns</module>
+        <module>sqs</module>
     </modules>
 </project>

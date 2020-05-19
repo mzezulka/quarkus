@@ -17,9 +17,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.junit.jupiter.api.Test;
 
-import com.google.common.collect.ImmutableMap;
-
 import io.quarkus.maven.it.verifier.RunningInvoker;
+import io.quarkus.test.devmode.util.DevModeTestUtils;
 
 /**
  * @author <a href="http://escoffier.me">Clement Escoffier</a>
@@ -37,24 +36,24 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         // Edit the "Hello" message.
         File source = new File(agentDir, "src/main/java/org/acme/HelloResource.java");
         String uuid = UUID.randomUUID().toString();
-        filter(source, ImmutableMap.of("return \"hello\";", "return \"" + uuid + "\";"));
+        filter(source, Collections.singletonMap("return \"hello\";", "return \"" + uuid + "\";"));
 
         // Wait until we get "uuid"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/hello").contains(uuid));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/hello").contains(uuid));
 
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
                 .until(source::isFile);
 
-        filter(source, ImmutableMap.of(uuid, "carambar"));
+        filter(source, Collections.singletonMap(uuid, "carambar"));
 
         // Wait until we get "carambar"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/hello").contains("carambar"));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/hello").contains("carambar"));
     }
 
     @Test
@@ -85,7 +84,7 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         // Wait until we get "bar"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/foo").contains("bar"));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/foo").contains("bar"));
     }
 
     @Test
@@ -98,14 +97,14 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         mvnRunProps.setProperty("debug", "false");
         running.execute(Arrays.asList("compile", "quarkus:dev"), Collections.emptyMap(), mvnRunProps);
 
-        String resp = getHttpResponse();
+        String resp = DevModeTestUtils.getHttpResponse();
         runningAgent = new RunningInvoker(agentDir, false);
         runningAgent.execute(Arrays.asList("compile", "quarkus:remote-dev"), Collections.emptyMap());
 
         assertThat(resp).containsIgnoringCase("ready").containsIgnoringCase("application").containsIgnoringCase("org.acme")
                 .containsIgnoringCase("1.0-SNAPSHOT");
 
-        String greeting = getHttpResponse("/app/hello/greeting");
+        String greeting = DevModeTestUtils.getHttpResponse("/app/hello/greeting");
         assertThat(greeting).containsIgnoringCase("bonjour");
 
         File source = new File(agentDir, "src/main/resources/application.properties");
@@ -115,13 +114,13 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
                 .until(source::isFile);
 
         String uuid = UUID.randomUUID().toString();
-        filter(source, ImmutableMap.of("bonjour", uuid));
+        filter(source, Collections.singletonMap("bonjour", uuid));
 
         // Wait until we get "uuid"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .atMost(1, TimeUnit.MINUTES)
-                .until(() -> getHttpResponse("/app/hello/greeting").contains(uuid));
+                .until(() -> DevModeTestUtils.getHttpResponse("/app/hello/greeting").contains(uuid));
     }
 
     @Test
@@ -138,7 +137,7 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .atMost(1, TimeUnit.MINUTES)
-                .until(() -> getHttpResponse("/lorem.txt").contains("Lorem ipsum"));
+                .until(() -> DevModeTestUtils.getHttpResponse("/lorem.txt").contains("Lorem ipsum"));
 
         // Update the resource
         String uuid = UUID.randomUUID().toString();
@@ -146,7 +145,7 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .atMost(1, TimeUnit.MINUTES)
-                .until(() -> getHttpResponse("/lorem.txt").contains(uuid));
+                .until(() -> DevModeTestUtils.getHttpResponse("/lorem.txt").contains(uuid));
 
         // Delete the resource
         //TODO: not supported yet in remote dev
@@ -166,14 +165,14 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         // Edit the "Hello" message.
         File source = new File(agentDir, "src/main/java/org/acme/HelloResource.java");
         String uuid = UUID.randomUUID().toString();
-        filter(source, ImmutableMap.of("return \"hello\";", "return \"" + uuid + "\"")); // No semi-colon
+        filter(source, Collections.singletonMap("return \"hello\";", "return \"" + uuid + "\"")); // No semi-colon
 
         // Wait until we get "uuid"
         AtomicReference<String> last = new AtomicReference<>();
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .atMost(1, TimeUnit.MINUTES).until(() -> {
-                    String content = getHttpResponse("/app/hello", true);
+                    String content = DevModeTestUtils.getHttpResponse("/app/hello", true);
                     last.set(content);
                     return content.contains(uuid);
                 });
@@ -186,12 +185,12 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
                 .pollDelay(1, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
                 .until(source::isFile);
-        filter(source, ImmutableMap.of("\"" + uuid + "\"", "\"carambar\";"));
+        filter(source, Collections.singletonMap("\"" + uuid + "\"", "\"carambar\";"));
 
         // Wait until we get "uuid"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/hello").contains("carambar"));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/hello").contains("carambar"));
     }
 
     @Test
@@ -224,18 +223,18 @@ public class RemoteDevMojoIT extends RunAndCheckWithAgentMojoTestBase {
         // Wait until we get "uuid"
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/hello").contains("message"));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/hello").contains("message"));
 
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
                 .until(source::isFile);
 
-        filter(source, ImmutableMap.of("message", "foobarbaz"));
+        filter(source, Collections.singletonMap("message", "foobarbaz"));
 
         await()
                 .pollDelay(1, TimeUnit.SECONDS)
-                .atMost(1, TimeUnit.MINUTES).until(() -> getHttpResponse("/app/hello").contains("foobarbaz"));
+                .atMost(1, TimeUnit.MINUTES).until(() -> DevModeTestUtils.getHttpResponse("/app/hello").contains("foobarbaz"));
     }
 
 }

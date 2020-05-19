@@ -112,6 +112,7 @@ public class KafkaStreamsTest {
         assertCategoryCount(2, 1);
 
         testKafkaStreamsAliveAndReady();
+        RestAssured.when().get("/kafkastreams/state").then().body(CoreMatchers.is("RUNNING"));
 
         // explicitly stopping the pipeline *before* the broker is shut down, as it
         // otherwise will time out

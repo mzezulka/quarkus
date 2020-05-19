@@ -26,9 +26,12 @@ import javax.inject.Singleton;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.ListTopicsResult;
+import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.jboss.logging.Logger;
 
 import io.quarkus.runtime.ShutdownEvent;
@@ -53,12 +56,17 @@ public class KafkaStreamsTopologyManager {
     private volatile Properties properties;
     private volatile Map<String, Object> adminClientConfig;
 
+    private volatile Instance<KafkaClientSupplier> kafkaClientSupplier;
+    private volatile Instance<StateListener> stateListener;
+    private volatile Instance<StateRestoreListener> globalStateRestoreListener;
+
     KafkaStreamsTopologyManager() {
         executor = null;
     }
 
     @Inject
-    public KafkaStreamsTopologyManager(Instance<Topology> topology) {
+    public KafkaStreamsTopologyManager(Instance<Topology> topology, Instance<KafkaClientSupplier> kafkaClientSupplier,
+            Instance<StateListener> stateListener, Instance<StateRestoreListener> globalStateRestoreListener) {
         // No producer for Topology -> nothing to do
         if (topology.isUnsatisfied()) {
             LOGGER.debug("No Topology producer; Kafka Streams will not be started");
@@ -68,6 +76,9 @@ public class KafkaStreamsTopologyManager {
 
         this.executor = Executors.newSingleThreadExecutor();
         this.topology = topology;
+        this.kafkaClientSupplier = kafkaClientSupplier;
+        this.stateListener = stateListener;
+        this.globalStateRestoreListener = globalStateRestoreListener;
     }
 
     /**
@@ -106,7 +117,19 @@ public class KafkaStreamsTopologyManager {
 
         Properties streamsProperties = getStreamsProperties(properties, bootstrapServersConfig, runtimeConfig);
 
-        streams = new KafkaStreams(topology.get(), streamsProperties);
+        if (kafkaClientSupplier.isUnsatisfied()) {
+            streams = new KafkaStreams(topology.get(), streamsProperties);
+        } else {
+            streams = new KafkaStreams(topology.get(), streamsProperties, kafkaClientSupplier.get());
+        }
+
+        if (!stateListener.isUnsatisfied()) {
+            streams.setStateListener(stateListener.get());
+        }
+        if (!globalStateRestoreListener.isUnsatisfied()) {
+            streams.setGlobalStateRestoreListener(globalStateRestoreListener.get());
+        }
+
         adminClientConfig = getAdminClientConfig(bootstrapServersConfig);
 
         executor.execute(() -> {
@@ -137,18 +160,26 @@ public class KafkaStreamsTopologyManager {
     private void waitForTopicsToBeCreated(Collection<String> topicsToAwait)
             throws InterruptedException {
         try (AdminClient adminClient = AdminClient.create(adminClientConfig)) {
+            Set<String> lastMissingTopics = null;
             while (true) {
                 try {
                     ListTopicsResult topics = adminClient.listTopics();
-                    Set<String> topicNames = topics.names().get(10, TimeUnit.SECONDS);
+                    Set<String> existingTopics = topics.names().get(10, TimeUnit.SECONDS);
 
-                    if (topicNames.containsAll(topicsToAwait)) {
-                        LOGGER.debug("All expected topics created");
+                    if (existingTopics.containsAll(topicsToAwait)) {
+                        LOGGER.debug("All expected topics created: " + topicsToAwait);
                         return;
                     } else {
-                        Set<String> missing = new HashSet<>(topicsToAwait);
-                        missing.removeAll(topicNames);
-                        LOGGER.debug("Waiting for topic(s) to be created: " + missing);
+                        Set<String> missingTopics = new HashSet<>(topicsToAwait);
+                        missingTopics.removeAll(existingTopics);
+
+                        // Do not spam warnings - topics may take time to be created by an operator like Strimzi
+                        if (missingTopics.equals(lastMissingTopics)) {
+                            LOGGER.debug("Waiting for topic(s) to be created: " + missingTopics);
+                        } else {
+                            LOGGER.warn("Waiting for topic(s) to be created: " + missingTopics);
+                            lastMissingTopics = missingTopics;
+                        }
                     }
 
                     Thread.sleep(1_000);

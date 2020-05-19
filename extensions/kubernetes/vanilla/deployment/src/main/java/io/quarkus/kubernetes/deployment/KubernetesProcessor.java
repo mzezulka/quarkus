@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 
 import io.dekorate.Session;
+import io.dekorate.SessionReader;
 import io.dekorate.SessionWriter;
 import io.dekorate.kubernetes.annotation.ImagePullPolicy;
 import io.dekorate.kubernetes.annotation.ServiceType;
@@ -74,6 +75,7 @@ import io.dekorate.kubernetes.decorator.ApplyImagePullPolicyDecorator;
 import io.dekorate.kubernetes.decorator.ApplyServiceAccountNamedDecorator;
 import io.dekorate.kubernetes.decorator.ApplyWorkingDirDecorator;
 import io.dekorate.kubernetes.decorator.RemoveAnnotationDecorator;
+import io.dekorate.processor.SimpleFileReader;
 import io.dekorate.processor.SimpleFileWriter;
 import io.dekorate.project.BuildInfo;
 import io.dekorate.project.FileProjectFactory;
@@ -110,7 +112,7 @@ import io.quarkus.kubernetes.spi.KubernetesRoleBuildItem;
 
 class KubernetesProcessor {
 
-    private static final Logger log = Logger.getLogger(KubernetesDeployer.class);
+    private static final Logger log = Logger.getLogger(KubernetesProcessor.class);
 
     private static final String OUTPUT_ARTIFACT_FORMAT = "%s%s.jar";
     public static final String DEFAULT_HASH_ALGORITHM = "SHA-256";
@@ -248,11 +250,16 @@ class KubernetesProcessor {
 
         final Map<String, String> generatedResourcesMap;
         // by passing false to SimpleFileWriter, we ensure that no files are actually written during this phase
-        final SessionWriter sessionWriter = new SimpleFileWriter(root, false);
         Project project = createProject(applicationInfo, artifactPath);
+        final SessionWriter sessionWriter = new SimpleFileWriter(root, false);
+        final SessionReader sessionReader = new SimpleFileReader(
+                project.getRoot().resolve("src").resolve("main").resolve("kubernetes"), kubernetesDeploymentTargets
+                        .getEntriesSortedByPriority().stream()
+                        .map(EnabledKubernetesDeploymentTargetsBuildItem.Entry::getName).collect(Collectors.toSet()));
         sessionWriter.setProject(project);
-        final Session session = Session.getSession();
+        final Session session = Session.getSession(new io.dekorate.logger.NoopLogger());
         session.setWriter(sessionWriter);
+        session.setReader(sessionReader);
 
         session.feed(Maps.fromProperties(config));
 
@@ -293,6 +300,7 @@ class KubernetesProcessor {
         // write the generated resources to the filesystem
         generatedResourcesMap = session.close();
 
+        List<String> generatedFileNames = new ArrayList<>(generatedResourcesMap.size());
         for (Map.Entry<String, String> resourceEntry : generatedResourcesMap.entrySet()) {
             String fileName = resourceEntry.getKey().replace(root.toAbsolutePath().toString(), "");
             String relativePath = resourceEntry.getKey().replace(root.toAbsolutePath().toString(), KUBERNETES);
@@ -308,11 +316,17 @@ class KubernetesProcessor {
                 }
             }
 
+            generatedFileNames.add(fileName.replace("/", ""));
             generatedResourceProducer.produce(
                     new GeneratedFileSystemResourceBuildItem(
                             // we need to make sure we are only passing the relative path to the build item
                             relativePath,
                             resourceEntry.getValue().getBytes(StandardCharsets.UTF_8)));
+        }
+
+        if (!generatedFileNames.isEmpty()) {
+            log.infof("Generated the Kubernetes manifests: '%s' in '%s'", String.join(",", generatedFileNames),
+                    outputTarget.getOutputDirectory() + File.separator + KUBERNETES);
         }
 
         try {
@@ -341,7 +355,7 @@ class KubernetesProcessor {
 
     /**
      * Apply changes to the target resource group
-     * 
+     *
      * @param session The session to apply the changes
      * @param target The deployment target (e.g. kubernetes, openshift, knative)
      * @param name The name of the resource to accept the configuration
@@ -491,8 +505,15 @@ class KubernetesProcessor {
         configMap.put(KNATIVE, knativeConfig);
 
         //Replicas
-        session.resources().decorate(new KubernetesApplyReplicasDecorator(kubernetesName, kubernetesConfig.getReplicas()));
-        session.resources().decorate(new OpenshiftApplyReplicasDecorator(openshiftConfig.getReplicas()));
+        if (kubernetesConfig.getReplicas() != 1) {
+            session.resources().decorate(new io.dekorate.kubernetes.decorator.ApplyReplicasDecorator(kubernetesName,
+                    kubernetesConfig.getReplicas()));
+        }
+        if (openshiftConfig.getReplicas() != 1) {
+            session.resources()
+                    .decorate(new io.dekorate.openshift.decorator.ApplyReplicasDecorator(openshiftName,
+                            openshiftConfig.getReplicas()));
+        }
 
         kubernetesAnnotations.forEach(a -> {
             session.resources().decorate(a.getTarget(), new AddAnnotationDecorator(new Annotation(a.getKey(), a.getValue())));
@@ -717,8 +738,8 @@ class KubernetesProcessor {
         BuildInfo buildInfo = new BuildInfo(app.getName(), app.getVersion(),
                 "jar", project.getBuildInfo().getBuildTool(),
                 artifactPath,
-                project.getBuildInfo().getOutputFile(),
-                project.getBuildInfo().getClassOutputDir());
+                project.getBuildInfo().getClassOutputDir(),
+                project.getBuildInfo().getResourceDir());
 
         return new Project(project.getRoot(), buildInfo, project.getScmInfo());
     }

@@ -27,7 +27,7 @@
         <!-- These properties are used by CreateProjectMojo to add the Maven Wrapper -->
         <proposed-maven-version>3.6.3</proposed-maven-version>
         <maven-wrapper.version>0.7.7</maven-wrapper.version>
-        <gradle-wrapper.version>6.3</gradle-wrapper.version>
+        <gradle-wrapper.version>6.4.1</gradle-wrapper.version>
 
         <!-- These properties are needed in order for them to be resolvable by the generated projects -->
         <!-- Quarkus uses jboss-parent and it comes with 3.8.0-jboss-2, we don't want that in the templates -->
@@ -37,7 +37,7 @@
         <scala-plugin.version>4.1.1</scala-plugin.version>
 
         <!-- Versions -->
-        <assertj.version>3.16.0</assertj.version>
+        <assertj.version>3.16.1</assertj.version>
         <eclipse-minimal-json.version>0.9.5</eclipse-minimal-json.version>
         <jackson.version>2.10.4</jackson.version>
         <jakarta.enterprise.cdi-api.version>2.0.2</jakarta.enterprise.cdi-api.version>

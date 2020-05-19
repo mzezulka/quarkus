@@ -120,6 +120,7 @@ public class QuarkusDevModeTest
         ExtensionContext.Store store = extensionContext.getRoot().getStore(ExtensionContext.Namespace.GLOBAL);
         if (store.get(TestResourceManager.class.getName()) == null) {
             TestResourceManager manager = new TestResourceManager(extensionContext.getRequiredTestClass());
+            manager.init();
             manager.start();
             store.put(TestResourceManager.class.getName(), new ExtensionContext.Store.CloseableResource() {
 
@@ -220,12 +221,10 @@ public class QuarkusDevModeTest
 
             DevModeContext context = new DevModeContext();
             context.setCacheDir(cache.toFile());
-            context.getClassesRoots().add(classes.toFile());
 
-            context.getModules()
-                    .add(new DevModeContext.ModuleInfo("default", deploymentDir.toAbsolutePath().toString(),
-                            Collections.singleton(deploymentSourcePath.toAbsolutePath().toString()),
-                            classes.toAbsolutePath().toString(), deploymentResourcePath.toAbsolutePath().toString()));
+            context.setApplicationRoot(new DevModeContext.ModuleInfo("default", deploymentDir.toAbsolutePath().toString(),
+                    Collections.singleton(deploymentSourcePath.toAbsolutePath().toString()),
+                    classes.toAbsolutePath().toString(), deploymentResourcePath.toAbsolutePath().toString()));
 
             setDevModeRunnerJarFile(context);
             return context;

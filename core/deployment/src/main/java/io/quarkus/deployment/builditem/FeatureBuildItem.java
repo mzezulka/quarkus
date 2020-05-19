@@ -13,16 +13,21 @@ public final class FeatureBuildItem extends MultiBuildItem {
     public static final String AMAZON_DYNAMODB = "amazon-dynamodb";
     public static final String AMAZON_LAMBDA = "amazon-lambda";
     public static final String AMAZON_S3 = "amazon-s3";
+    public static final String AMAZON_SNS = "amazon-sns";
+    public static final String AMAZON_SQS = "amazon-sqs";
     public static final String ARTEMIS_CORE = "artemis-core";
     public static final String ARTEMIS_JMS = "artemis-jms";
     public static final String CACHE = "cache";
     public static final String CDI = "cdi";
     public static final String CONFIG_YAML = "config-yaml";
+    public static final String CONSUL_CONFIG = "consul-config";
     public static final String ELASTICSEARCH_REST_CLIENT = "elasticsearch-rest-client";
     public static final String FLYWAY = "flyway";
-    public static final String LIQUIBASE = "liquibase";
+    public static final String GRPC_CLIENT = "grpc-client";
+    public static final String GRPC_SERVER = "grpc-server";
     public static final String HIBERNATE_ORM = "hibernate-orm";
     public static final String HIBERNATE_ORM_PANACHE = "hibernate-orm-panache";
+    public static final String HIBERNATE_ORM_PANACHE_KOTLIN = "hibernate-orm-panache-kotlin";
     public static final String HIBERNATE_VALIDATOR = "hibernate-validator";
     public static final String HIBERNATE_SEARCH_ELASTICSEARCH = "hibernate-search-elasticsearch";
     public static final String INFINISPAN_CLIENT = "infinispan-client";
@@ -41,6 +46,7 @@ public final class FeatureBuildItem extends MultiBuildItem {
     public static final String KOTLIN = "kotlin";
     public static final String KUBERNETES = "kubernetes";
     public static final String KUBERNETES_CLIENT = "kubernetes-client";
+    public static final String LIQUIBASE = "liquibase";
     public static final String LOGGING_GELF = "logging-gelf";
     public static final String MAILER = "mailer";
     public static final String MONGODB_CLIENT = "mongodb-client";
@@ -56,6 +62,7 @@ public final class FeatureBuildItem extends MultiBuildItem {
     public static final String OPTAPLANNER_JACKSON = "optaplanner-jackson";
     public static final String OPTAPLANNER_JSONB = "optaplanner-jsonb";
     public static final String PANACHE_REST_HIBERNATE_ORM = "panache-rest-hibernate-orm";
+    public static final String PICOCLI = "picocli";
     public static final String QUTE = "qute";
     public static final String RESTEASY = "resteasy";
     public static final String RESTEASY_JACKSON = "resteasy-jackson";
@@ -89,11 +96,13 @@ public final class FeatureBuildItem extends MultiBuildItem {
     public static final String SMALLRYE_REACTIVE_MESSAGING_MQTT = "smallrye-reactive-messaging-mqtt";
     public static final String SMALLRYE_REACTIVE_STREAMS_OPERATORS = "smallrye-reactive-streams-operators";
     public static final String SMALLRYE_REACTIVE_TYPE_CONVERTERS = "smallrye-reactive-type-converters";
+    public static final String SMALLRYE_GRAPHQL = "smallrye-graphql";
     public static final String SPRING_DI = "spring-di";
     public static final String SPRING_WEB = "spring-web";
     public static final String SPRING_DATA_JPA = "spring-data-jpa";
     public static final String SPRING_SECURITY = "spring-security";
     public static final String SPRING_BOOT_PROPERTIES = "spring-boot-properties";
+    public static final String SPRING_CACHE = "spring-cache";
     public static final String SPRING_CLOUD_CONFIG_CLIENT = "spring-cloud-config-client";
     public static final String SWAGGER_UI = "swagger-ui";
     public static final String TIKA = "tika";
@@ -102,6 +111,7 @@ public final class FeatureBuildItem extends MultiBuildItem {
     public static final String VERTX = "vertx";
     public static final String VERTX_WEB = "vertx-web";
     public static final String VERTX_GRAPHQL = "vertx-graphql";
+    public static final String WEBJARS_LOCATOR = "webjars-locator";
 
     private final String info;
 

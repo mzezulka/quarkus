@@ -41,19 +41,19 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.junit.jupiter.api.extension.TestInstantiationException;
 import org.opentest4j.TestAbortedException;
 
-import io.quarkus.bootstrap.app.AdditionalDependency;
 import io.quarkus.bootstrap.app.AugmentAction;
 import io.quarkus.bootstrap.app.CuratedApplication;
 import io.quarkus.bootstrap.app.QuarkusBootstrap;
 import io.quarkus.bootstrap.app.RunningQuarkusApplication;
 import io.quarkus.bootstrap.app.StartupAction;
+import io.quarkus.bootstrap.model.PathsCollection;
+import io.quarkus.bootstrap.runner.Timing;
 import io.quarkus.builder.BuildChainBuilder;
 import io.quarkus.builder.BuildContext;
 import io.quarkus.builder.BuildStep;
 import io.quarkus.deployment.builditem.TestAnnotationBuildItem;
 import io.quarkus.deployment.builditem.TestClassBeanBuildItem;
 import io.quarkus.deployment.builditem.TestClassPredicateBuildItem;
-import io.quarkus.runtime.Timing;
 import io.quarkus.test.common.PathTestHelper;
 import io.quarkus.test.common.PropertyTestUtil;
 import io.quarkus.test.common.RestAssuredURLManager;
@@ -65,6 +65,8 @@ import io.quarkus.test.junit.buildchain.TestBuildChainCustomizerProducer;
 import io.quarkus.test.junit.callback.QuarkusTestAfterEachCallback;
 import io.quarkus.test.junit.callback.QuarkusTestBeforeAllCallback;
 import io.quarkus.test.junit.callback.QuarkusTestBeforeEachCallback;
+import io.quarkus.test.junit.internal.DeepClone;
+import io.quarkus.test.junit.internal.XStreamDeepClone;
 
 //todo: share common core with QuarkusUnitTest
 public class QuarkusTestExtension
@@ -87,6 +89,8 @@ public class QuarkusTestExtension
     private static List<Object> beforeEachCallbacks = new ArrayList<>();
     private static List<Object> afterEachCallbacks = new ArrayList<>();
 
+    private static DeepClone deepClone;
+
     private ExtensionState doJavaStart(ExtensionContext context) throws Throwable {
         Closeable testResourceManager = null;
         try {
@@ -96,32 +100,30 @@ public class QuarkusTestExtension
             testClassLocation = getTestClassesLocation(requiredTestClass);
             final Path appClassLocation = getAppClassLocationForTestLocation(testClassLocation.toString());
 
-            originalCl = Thread.currentThread().getContextClassLoader();
-
-            final QuarkusBootstrap.Builder runnerBuilder = QuarkusBootstrap.builder()
-                    .setIsolateDeployment(true)
-                    .setMode(QuarkusBootstrap.Mode.TEST);
-
-            if (Files.isDirectory(appClassLocation)) {
-                // this is a project that is a part of the workspace
-                runnerBuilder.setProjectRoot(Paths.get("").normalize().toAbsolutePath());
-            } else {
-                // this is an external JAR
-                runnerBuilder.setApplicationRoot(appClassLocation);
-            }
+            PathsCollection.Builder rootBuilder = PathsCollection.builder();
 
             if (!appClassLocation.equals(testClassLocation)) {
-                runnerBuilder.addAdditionalApplicationArchive(AdditionalDependency.test(testClassLocation));
+                rootBuilder.add(testClassLocation);
                 // if test classes is a dir, we should also check whether test resources dir exists as a separate dir (gradle)
                 // TODO: this whole app/test path resolution logic is pretty dumb, it needs be re-worked using proper workspace discovery
                 if (Files.isDirectory(testClassLocation)) {
                     final Path testResourcesLocation = testClassLocation.getParent().getParent().getParent()
                             .resolve("resources").resolve("test");
                     if (Files.exists(testResourcesLocation)) {
-                        runnerBuilder.addAdditionalApplicationArchive(AdditionalDependency.test(testResourcesLocation));
+                        rootBuilder.add(testResourcesLocation);
                     }
                 }
             }
+            originalCl = Thread.currentThread().getContextClassLoader();
+
+            final QuarkusBootstrap.Builder runnerBuilder = QuarkusBootstrap.builder()
+                    .setIsolateDeployment(true)
+                    .setMode(QuarkusBootstrap.Mode.TEST);
+
+            runnerBuilder.setProjectRoot(Paths.get("").normalize().toAbsolutePath());
+
+            rootBuilder.add(appClassLocation);
+            runnerBuilder.setApplicationRoot(rootBuilder.build());
 
             CuratedApplication curatedApplication = runnerBuilder
                     .setTest(true)
@@ -139,11 +141,13 @@ public class QuarkusTestExtension
             AugmentAction augmentAction = curatedApplication.createAugmentor(TestBuildChainFunction.class.getName(), props);
             StartupAction startupAction = augmentAction.createInitialRuntimeApplication();
             Thread.currentThread().setContextClassLoader(startupAction.getClassLoader());
+            populateDeepCloneField(startupAction);
 
             //must be done after the TCCL has been set
             testResourceManager = (Closeable) startupAction.getClassLoader().loadClass(TestResourceManager.class.getName())
                     .getConstructor(Class.class)
                     .newInstance(requiredTestClass);
+            testResourceManager.getClass().getMethod("init").invoke(testResourceManager);
             testResourceManager.getClass().getMethod("start").invoke(testResourceManager);
 
             populateCallbacks(startupAction.getClassLoader());
@@ -197,6 +201,11 @@ public class QuarkusTestExtension
             }
             throw e;
         }
+    }
+
+    // keep it super simple for now, but we might need multiple strategies in the future
+    private void populateDeepCloneField(StartupAction startupAction) {
+        deepClone = new XStreamDeepClone(startupAction.getClassLoader());
     }
 
     private void populateCallbacks(ClassLoader classLoader) throws ClassNotFoundException {
@@ -500,19 +509,12 @@ public class QuarkusTestExtension
             }
             newMethod.setAccessible(true);
 
-            // the arguments were not loaded from TCCL so we need to try and "convert" if possible
-            // most of the time this won't be possible or necessary, but for the widely used enum case we need to do it
-            // this is a total hack, but...
+            // the arguments were not loaded from TCCL so we need to deep clone them into the TCCL
+            // because the test method runs from a class loaded from the TCCL
             List<Object> originalArguments = invocationContext.getArguments();
             List<Object> argumentsFromTccl = new ArrayList<>();
             for (Object arg : originalArguments) {
-                if (arg != null && arg.getClass().isEnum()) {
-                    argumentsFromTccl.add(Enum.valueOf((Class<Enum>) Class.forName(arg.getClass().getName(), false,
-                            Thread.currentThread().getContextClassLoader()), arg.toString()));
-                } else {
-                    // we can't do anything but hope for the best...
-                    argumentsFromTccl.add(arg);
-                }
+                argumentsFromTccl.add(deepClone.clone(arg));
             }
 
             return newMethod.invoke(actualTestInstance, argumentsFromTccl.toArray(new Object[0]));
